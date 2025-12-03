@@ -14,3 +14,4 @@ qdrant-client
 Pillow
 easyocr
 sentence-transformers
+pypdf
