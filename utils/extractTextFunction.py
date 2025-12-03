@@ -9,12 +9,14 @@ from dotenv import load_dotenv
 from langchain_qdrant import QdrantVectorStore
 from openai import OpenAI
 from pymongo import MongoClient
+from qdrant_client import QdrantClient
 import json
 
 load_dotenv()
 
 def extractText(file_path,file_extension,file_name):
     QDRANT_URL = os.getenv("VECTORDB_URL", "http://localhost:6333")
+    QDRANT_API_KEY = os.getenv("QDRANT_API_KEY")
     documents = []
     extracted_text =""
     if file_extension == "pdf":
@@ -50,13 +52,25 @@ def extractText(file_path,file_extension,file_name):
     embedding = HuggingFaceEmbeddings(model_name="sentence-transformers/all-mpnet-base-v2")
 
     print(QDRANT_URL)
-    QdrantVectorStore.from_documents(
-        documents=documents,
-        embedding=embedding,
+
+    qdrant_client = QdrantClient(
         url=QDRANT_URL,
-        collection_name="ai_health_analysis",
-        force_recreate=False
+        api_key=QDRANT_API_KEY or None,  
     )
+    print("fine")
+    vector_store = QdrantVectorStore(
+        client=qdrant_client,
+        collection_name="ai_health_analysis",
+        embedding=embedding,
+    )
+    vector_store.add_documents(documents=documents)
+    # QdrantVectorStore.from_documents(
+    #     client=qdrant_client,
+    #     documents=documents,
+    #     embedding=embedding,
+    #     collection_name="ai_health_analysis",
+    #     force_recreate=False
+    # )
 
     print("Indexing Done")
 

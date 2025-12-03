@@ -3,11 +3,11 @@ from dotenv import load_dotenv
 import os
 from langchain_qdrant import QdrantVectorStore
 from langchain_huggingface import HuggingFaceEmbeddings
+from qdrant_client import QdrantClient
 
 load_dotenv()
 
 def analysis(input):
-    print(os.getenv("OPENAI_API_KEY"))
     client = OpenAI(
         api_key=os.getenv("OPENAI_API_KEY"),
         base_url="https://openrouter.ai/api/v1"
@@ -16,10 +16,16 @@ def analysis(input):
     embedding = HuggingFaceEmbeddings(model_name="sentence-transformers/all-mpnet-base-v2")
 
     QDRANT_URL = os.getenv("VECTORDB_URL","http://localhost:6333")
+    QDRANT_API_KEY = os.getenv("QDRANT_API_KEY")
 
-    vector_db  =QdrantVectorStore.from_existing_collection(
-        embedding=embedding,
+    qdrant_client = QdrantClient(
         url=QDRANT_URL,
+        api_key=QDRANT_API_KEY or None,   # works for both local (no key) and cloud
+    )
+
+    vector_db  =QdrantVectorStore(
+        client=qdrant_client,
+        embedding=embedding,
         collection_name="ai_health_analysis"
     )
 
