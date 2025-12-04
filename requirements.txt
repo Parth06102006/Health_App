@@ -15,3 +15,4 @@ Pillow
 easyocr
 sentence-transformers
 pypdf
+streamlit-authenticator

@@ -10,6 +10,9 @@ st.title("AI Health Analysis")
 # Supported file types
 FILE_EXTENSIONS = ["jpg", "jpeg", "png", "pdf", "txt"]
 
+if "username" not in st.session_state or not st.session_state["username"]:
+    st.error("Kindly Login to find the Detailed Analysis")
+    st.stop()  # Better than raising Exception in Streamlit
 # Form for file upload
 with st.form("ai_health_analysis_form"):
     uploaded_file = st.file_uploader("Upload your medical reports", type=FILE_EXTENSIONS)
@@ -24,7 +27,8 @@ with st.form("ai_health_analysis_form"):
                     temp_file.write(uploaded_file.read())
                     temp_file_path = temp_file.name
 
-                extractText(temp_file_path, suffix.lstrip("."), Path(temp_file_path).name)
+                current_user = st.session_state["username"]
+                extractText(temp_file_path, suffix.lstrip("."), Path(temp_file_path).name,current_user)
 
                 st.success("File uploaded and processed successfully.")
 

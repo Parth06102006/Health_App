@@ -14,7 +14,7 @@ import json
 
 load_dotenv()
 
-def extractText(file_path,file_extension,file_name):
+def extractText(file_path,file_extension,file_name,username):
     QDRANT_URL = os.getenv("VECTORDB_URL", "http://localhost:6333")
     QDRANT_API_KEY = os.getenv("QDRANT_API_KEY")
     documents = []
@@ -29,6 +29,8 @@ def extractText(file_path,file_extension,file_name):
         )
 
         documents = text_splitter.split_documents(docs)
+        for doc in documents:
+            doc.metadata["user"] = username
 
     elif file_extension in ["jpg", "jpeg", "png"]:
         reader = easyocr.Reader(['en'])
@@ -42,7 +44,7 @@ def extractText(file_path,file_extension,file_name):
         chunks = text_splitter.split_text(extracted_text)
 
         documents = [
-            Document(page_content=chunk, metadata={"source": file_name})
+            Document(page_content=chunk, metadata={"source": file_name,"user": username})
             for chunk in chunks
         ]
 
@@ -159,6 +161,7 @@ def extractText(file_path,file_extension,file_name):
         reports = database["Sources"]
 
         reports.insert_one({
+            "user":username,
             "file_name": file_name,
             "file_type": file_extension,
             "raw_text": extracted_text,
