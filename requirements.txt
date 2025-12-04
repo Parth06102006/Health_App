@@ -16,3 +16,5 @@ easyocr
 sentence-transformers
 pypdf
 streamlit-authenticator
+requests
+plotly
