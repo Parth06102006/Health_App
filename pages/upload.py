@@ -3,6 +3,7 @@ from pathlib import Path
 from tempfile import NamedTemporaryFile
 from utils.extractTextFunction import extractText
 import os
+import asyncio
 
 # App title
 st.title("AI Health Analysis")
@@ -28,7 +29,7 @@ with st.form("ai_health_analysis_form"):
                     temp_file_path = temp_file.name
 
                 current_user = st.session_state["username"]
-                extractText(temp_file_path, suffix.lstrip("."), Path(temp_file_path).name,current_user)
+                asyncio.run(extractText(temp_file_path, suffix.lstrip("."), Path(temp_file_path).name, current_user))
 
                 st.success("File uploaded and processed successfully.")
 

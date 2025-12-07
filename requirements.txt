@@ -18,3 +18,4 @@ pypdf
 streamlit-authenticator
 requests
 plotly
+asyncio

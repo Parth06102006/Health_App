@@ -1,4 +1,4 @@
-from openai import OpenAI
+from openai import AsyncOpenAI
 from dotenv import load_dotenv
 import os
 from langchain_qdrant import QdrantVectorStore
@@ -8,11 +8,12 @@ from pymongo import MongoClient
 import json
 from qdrant_client.models import Filter, FieldCondition, MatchValue,PayloadSchemaType
 from qdrant_client.http.exceptions import UnexpectedResponse
+import asyncio
 
 load_dotenv()
 
-def analysis(input,username):
-    client = OpenAI(
+async def analysis(input,username):
+    client = AsyncOpenAI(
         api_key=os.getenv("OPENAI_API_KEY"),
         base_url="https://openrouter.ai/api/v1"
     )
@@ -35,7 +36,8 @@ def analysis(input,username):
     except Exception as e:
         raise Exception("The following error occurred: ", e)
     finally:
-        mongoClient.close()
+        if 'mongoClient' in locals():
+            mongoClient.close()
 
     embedding = HuggingFaceEmbeddings(model_name="sentence-transformers/all-mpnet-base-v2")
 
@@ -71,7 +73,7 @@ def analysis(input,username):
         print(f"A general exception occurred during index creation: {e}")
     # ------------------------------------------------------------------
 
-    vector_db  =QdrantVectorStore(
+    vector_db = QdrantVectorStore(
         client=qdrant_client,
         embedding=embedding,
         collection_name="ai_health_analysis"
@@ -88,7 +90,7 @@ def analysis(input,username):
         ]
     )
 
-    search_results = vector_db.similarity_search(query=input,k=5,filter=filter)
+    search_results = await  vector_db.similarity_search(query=input,k=5,filter=filter)
 
     print("Vector DB Semantic Search Ended")
 
@@ -107,7 +109,7 @@ def analysis(input,username):
         Context:{context}
     """
 
-    response = client.chat.completions.create(
+    response = await client.chat.completions.create(
         model="nvidia/nemotron-nano-12b-v2-vl:free",
         messages=[
             {"role":"system","content":SYSTEM_PROMPT},
@@ -119,8 +121,8 @@ def analysis(input,username):
 
     return response.choices[0].message.content
 
-def generateSuggestions(username):
-    client = OpenAI(
+async def generateSuggestions(username):
+    client = AsyncOpenAI(
         api_key=os.getenv("OPENAI_API_KEY"),
         base_url="https://openrouter.ai/api/v1"
     )
@@ -128,70 +130,73 @@ def generateSuggestions(username):
     uri = os.getenv("DATABASE_URL")
     mongoClient = MongoClient(uri)
 
-    database = mongoClient["health"]
-    reports = database["Sources"]
-    results = reports.find({"user":username})
-    raw_text = ""
-    parsed_data= ""
-    symptoms = ""
-    for report in results:
-        raw_text = report.get("raw_text")
-        parsed_data = report.get("parsed_data")
-        symptoms = report.get("symptoms", None) 
+    try:
+        database = mongoClient["health"]
+        reports = database["Sources"]
+        results = reports.find({"user":username})
+        raw_text = ""
+        parsed_data= ""
+        symptoms = ""
+        for report in results:
+            raw_text = report.get("raw_text")
+            parsed_data = report.get("parsed_data")
+            symptoms = report.get("symptoms", None) 
 
-    SYSTEM_PROMPT = """
-        You are an AI assistant who is tasked to provide suggestion to the concerned user regarding their medical reports , symptoms and medical history
+        SYSTEM_PROMPT = """
+            You are an AI assistant who is tasked to provide suggestion to the concerned user regarding their medical reports , symptoms and medical history
 
-        User would provide you the context in the below form : 
-        {
-            "text":"Medical History of the user in string",
-            "medical_params":
-                            {
-                "blood_sugar_fasting": null or number,
-                "blood_sugar_pp": null or number,
-                "blood_pressure_systolic": null or number,
-                "blood_pressure_diastolic": null or number,
-                "hemoglobin": null or number,
-                "rbc": null or number,
-                "wbc": null or number,
-                "platelets": null or number,
-                "cholesterol_total": null or number,
-                "hdl": null or number,
-                "ldl": null or number,
-                "triglycerides": null or number,
-                "creatinine": null or number,
-                "sgot": null or number,
-                "sgpt": null or number,
-                "tsh": null or number,
-                "additional_notes": "string"
-            }
-            "symptoms":string
-        } 
+            User would provide you the context in the below form : 
+            {
+                "text":"Medical History of the user in string",
+                "medical_params":
+                                {
+                    "blood_sugar_fasting": null or number,
+                    "blood_sugar_pp": null or number,
+                    "blood_pressure_systolic": null or number,
+                    "blood_pressure_diastolic": null or number,
+                    "hemoglobin": null or number,
+                    "rbc": null or number,
+                    "wbc": null or number,
+                    "platelets": null or number,
+                    "cholesterol_total": null or number,
+                    "hdl": null or number,
+                    "ldl": null or number,
+                    "triglycerides": null or number,
+                    "creatinine": null or number,
+                    "sgot": null or number,
+                    "sgpt": null or number,
+                    "tsh": null or number,
+                    "additional_notes": "string"
+                }
+                "symptoms":string
+            } 
 
-        Using the context passed provide the most suitable and appropraite suggestions that aligns with the users health care and well being
+            Using the context passed provide the most suitable and appropraite suggestions that aligns with the users health care and well being
 
-        Rules :
-        - Do not hallucinate and advise the user for something we are not certain to advise
-        - Keep the tone of the message light and straight
-        - The suggestion should be generaed from the context provided only
-    """
+            Rules :
+            - Do not hallucinate and advise the user for something we are not certain to advise
+            - Keep the tone of the message light and straight
+            - The suggestion should be generaed from the context provided only
+        """
 
-    information = json.dumps({
-        "text":raw_text,
-        "medical_params":parsed_data,
-        "s)ymptoms":symptoms
-    })
+        information = json.dumps({
+            "text":raw_text,
+            "medical_params":parsed_data,
+            "symptoms":symptoms
+        })
 
-    print("Before Response",information)
-    response = client.chat.completions.create(
-        model="meta-llama/llama-3.3-70b-instruct:free",
-        messages = [
-            {"role":"system","content":SYSTEM_PROMPT},
-            {"role":"user","content":information}
-        ]
-    )
+        print("Before Response",information)
+        response = await client.chat.completions.create(
+            model="meta-llama/llama-3.3-70b-instruct:free",
+            messages = [
+                {"role":"system","content":SYSTEM_PROMPT},
+                {"role":"user","content":information}
+            ]
+        )
 
-    return response.choices[0].message.content
+        return response.choices[0].message.content
+    finally:
+        mongoClient.close()
 
 
 

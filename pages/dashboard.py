@@ -6,9 +6,23 @@ import plotly.express as px
 import os
 
 # Connect to MongoDB
-client = MongoClient(os.getenv("DATABASE_URL"))
-db = client["health"]
-reports = db["Sources"]
+def getData():
+    client = MongoClient(os.getenv("DATABASE_URL"))
+    db = client["health"]
+    reports = db["Sources"]
+
+    current_user = st.session_state["username"]
+    # <CHANGE> Fetch real data from MongoDB instead of using random seed data
+    cursor = reports.find({"user":current_user})
+    data = [item.get("parsed_data", item) for item in cursor]
+    client.close()
+    return data
+
+data_list = getData()
+
+if not data_list:
+    st.warning("No medical data found in database. Please upload reports first.")
+    st.stop()
 
 if "username" not in st.session_state or not st.session_state["username"]:
     st.error("Kindly Login to find the Detailed Analysis")
@@ -36,15 +50,6 @@ normal_ranges = {
     "sgpt": {"range": (0, 40), "unit": "U/L"},
     "tsh": {"range": (0.4, 4.0), "unit": "mIU/L"}
 }
-
-current_user = st.session_state["username"]
-# <CHANGE> Fetch real data from MongoDB instead of using random seed data
-cursor = reports.find({"user":current_user})
-data_list = [item.get("parsed_data", item) for item in cursor]
-
-if not data_list:
-    st.warning("No medical data found in database. Please upload reports first.")
-    st.stop()
 
 df = pd.DataFrame(data_list)
 

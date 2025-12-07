@@ -1,5 +1,6 @@
 import streamlit as st
 from utils.analysis import analysis
+import asyncio
 
 st.title("Enter your Symptoms")
 
@@ -15,7 +16,7 @@ with st.form("symptom_find_disease"):
         try:
             current_user = st.session_state["username"]
             print(current_user)
-            message = analysis(info,current_user)
+            message = asyncio.run(analysis(info, current_user))
             print(message)
             st.write(message)
         except Exception as e:

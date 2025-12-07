@@ -7,14 +7,15 @@ import os
 from langchain_core.documents import Document
 from dotenv import load_dotenv
 from langchain_qdrant import QdrantVectorStore
-from openai import OpenAI
+from openai import AsyncOpenAI
 from pymongo import MongoClient
 from qdrant_client import QdrantClient
 import json
+import asyncio
 
 load_dotenv()
 
-def extractText(file_path,file_extension,file_name,username):
+async def extractText(file_path,file_extension,file_name,username):
     QDRANT_URL = os.getenv("VECTORDB_URL", "http://localhost:6333")
     QDRANT_API_KEY = os.getenv("QDRANT_API_KEY")
     documents = []
@@ -65,7 +66,7 @@ def extractText(file_path,file_extension,file_name,username):
         collection_name="ai_health_analysis",
         embedding=embedding,
     )
-    vector_store.add_documents(documents=documents)
+    await vector_store.add_documents(documents=documents)
     # QdrantVectorStore.from_documents(
     #     client=qdrant_client,
     #     documents=documents,
@@ -80,7 +81,7 @@ def extractText(file_path,file_extension,file_name,username):
     mongoClient = MongoClient(uri)
 
     try:   
-        client = OpenAI(
+        client = AsyncOpenAI(
             api_key=os.getenv("GOOGLE_API_KEY"),
             base_url="https://generativelanguage.googleapis.com/v1beta/openai"
         )
@@ -144,7 +145,7 @@ def extractText(file_path,file_extension,file_name,username):
 
     """
 
-        response = client.chat.completions.create(
+        response = await client.chat.completions.create(
             model="gemini-2.5-flash",
             response_format={"type":"json_object"},
             messages=[
